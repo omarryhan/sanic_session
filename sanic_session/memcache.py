@@ -13,7 +13,8 @@ class MemcacheSessionInterface(BaseSessionInterface):
             httponly: bool=True, cookie_name: str = 'session',
             prefix: str = 'session:',
             sessioncookie: bool=False, samesite: str=None,
-            session_name: str='session'):
+            session_name: str='session', secure: bool=None,
+            warn_lock: bool=True):
         """Initializes the interface for storing client sessions in memcache.
         Requires a client object establised with `asyncio_memcache`.
 
@@ -45,6 +46,11 @@ class MemcacheSessionInterface(BaseSessionInterface):
                 e.g. If ``session_name`` is ``alt_session``, it should be accessed like that: ``request['alt_session']``
                 e.g. And if ``session_name`` is left to default, it should be accessed like that: ``request['session']``
                 Default: 'session'
+            secure (bool, optional):
+                Whether or not the cookie should be secure (HTTP(S) only)
+            warn_lock (bool, optional):
+                Set to False to turn off session_dict lock warning (Not recommended)
+                Default: True
         """
         if aiomcache is None:
             raise RuntimeError("Please install aiomcache: pip install sanic_session[aiomcache]")
@@ -64,18 +70,20 @@ class MemcacheSessionInterface(BaseSessionInterface):
             sessioncookie=sessioncookie,
             samesite=samesite,
             session_name=session_name,
+            secure=secure,
+            warn_lock=warn_lock
         )
 
-    async def _get_value(self, prefix, sid):
+    async def _get_value(self, sid):
         key = (self.prefix + sid).encode()
         value = await self.memcache_connection.get(key)
         return value.decode() if value else None
 
-    async def _delete_key(self, key):
-        return await self.memcache_connection.delete(key.encode())
+    async def _del_value(self, sid):
+        return await self.memcache_connection.delete((self.prefix + sid).encode())
 
-    async def _set_value(self, key, data):
+    async def _set_value(self, sid, data):
         return await self.memcache_connection.set(
-            key.encode(), data.encode(),
+            (self.prefix + sid).encode(), data.encode(),
             exptime=self.expiry
         )

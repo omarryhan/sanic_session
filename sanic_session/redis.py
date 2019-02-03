@@ -15,7 +15,9 @@ class RedisSessionInterface(BaseSessionInterface):
             prefix: str='session:',
             sessioncookie: bool=False,
             samesite: str=None,
-            session_name: str='session'):
+            session_name: str='session',
+            secure: bool=None,
+            warn_lock: bool=True):
         """Initializes a session interface backed by Redis.
 
         Args:
@@ -31,7 +33,7 @@ class RedisSessionInterface(BaseSessionInterface):
             cookie_name (str, optional):
                 Name used for the client cookie.
             prefix (str, optional):
-                Memcache keys will take the format of `prefix+session_id`;
+                asyncio_redis keys will take the format of `prefix+session_id`;
                 specify the prefix here.
             sessioncookie (bool, optional):
                 Specifies if the sent cookie should be a 'session cookie', i.e
@@ -47,6 +49,11 @@ class RedisSessionInterface(BaseSessionInterface):
                 e.g. If ``session_name`` is ``alt_session``, it should be accessed like that: ``request['alt_session']``
                 e.g. And if ``session_name`` is left to default, it should be accessed like that: ``request['session']``
                 Default: 'session'
+            secure (bool, optional):
+                Whether or not the cookie should be secure (HTTP(S) only)
+            warn_lock (bool, optional):
+                Set to False to turn off session_dict lock warning (Not recommended)
+                Default: True
         """
         if asyncio_redis is None:
             raise RuntimeError("Please install asyncio_redis: pip install sanic_session[redis]")
@@ -62,16 +69,21 @@ class RedisSessionInterface(BaseSessionInterface):
             sessioncookie=sessioncookie,
             samesite=samesite,
             session_name=session_name,
+            secure=secure,
+            warn_lock=warn_lock
         )
 
-    async def _get_value(self, prefix, key):
+    async def _get_value(self, sid):
+        key = self.prefix + sid
         redis_connection = await self.redis_getter()
-        return await redis_connection.get(prefix + key)
+        return await redis_connection.get(key)
 
-    async def _delete_key(self, key):
+    async def _del_value(self, sid):
+        key = self.prefix + sid
         redis_connection = await self.redis_getter()
         await redis_connection.delete([key])
 
-    async def _set_value(self, key, data):
+    async def _set_value(self, sid, data):
+        key = self.prefix + sid
         redis_connection = await self.redis_getter()
         await redis_connection.setex(key, self.expiry, data)

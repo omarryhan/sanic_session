@@ -31,6 +31,11 @@ When initializing a session interface, you have a number of optional arguments f
             1. ``cookie_name``
             2. ``prefix`` (Only if the two cookies share the same store)
             3. And obviously, different: ``session_name``
+**secure** (bool, optional):
+    Whether or not the cookie should be secure (HTTP(S) only)
+**warn_lock** (bool, optional):
+    Set to False to turn off session_dict lock warning (Not recommended)
+    Default: True
 
 
 **Example 1:**

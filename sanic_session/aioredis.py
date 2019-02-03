@@ -13,7 +13,8 @@ class AIORedisSessionInterface(BaseSessionInterface):
             httponly: bool=True, cookie_name: str='session',
             prefix: str='session:',
             sessioncookie: bool=False, samesite: str=None,
-            session_name: str='session'):
+            session_name: str='session', secure: bool=None,
+            warn_lock: bool=True):
         """Initializes a session interface backed by Redis.
 
         Args:
@@ -44,6 +45,11 @@ class AIORedisSessionInterface(BaseSessionInterface):
                 e.g. If ``session_name`` is ``alt_session``, it should be accessed like that: ``request['alt_session']``
                 e.g. And if ``session_name`` is left to default, it should be accessed like that: ``request['session']``
                 Default: 'session'
+            secure (bool, optional):
+                Whether or not the cookie should be secure (HTTP(S) only)
+            warn_lock (bool, optional):
+                Set to False to turn off session_dict lock warning (Not recommended)
+                Default: True
         """
         if aioredis is None:
             raise RuntimeError("Please install aioredis: pip install sanic_session[aioredis]")
@@ -59,13 +65,16 @@ class AIORedisSessionInterface(BaseSessionInterface):
             sessioncookie=sessioncookie,
             samesite=samesite,
             session_name=session_name,
+            secure=secure,
+            warn_lock=warn_lock
         )
 
-    async def _get_value(self, prefix, sid):
+    async def _get_value(self, sid):
         return await self.redis.get(self.prefix + sid)
 
-    async def _delete_key(self, key):
-        await self.redis.delete(key)
+    async def _del_value(self, sid):
+        await self.redis.delete(self.prefix + sid)
 
-    async def _set_value(self, key, data):
-        await self.redis.setex(key, self.expiry, data)
+    async def _set_value(self, sid, data):
+        await self.redis.setex(self.prefix + sid, self.expiry, data)
+

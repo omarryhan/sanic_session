@@ -1,7 +1,7 @@
 import time
 from sanic import Sanic
 from sanic.response import text
-from sanic_session.memory import InMemorySessionInterface
+from sanic_session.memory import InMemorySessionInterface, ExpiringDict
 from sanic_session import Session
 from sanic_session.base import SessionDict
 import pytest
@@ -28,7 +28,7 @@ async def test_should_create_new_sid_if_no_cookie(mocker, mock_dict):
     request.cookies = {}
 
     mocker.spy(uuid, 'uuid4')
-    session_interface = InMemorySessionInterface()
+    session_interface = InMemorySessionInterface(warn_lock=False)
     await session_interface.open(request)
 
     assert uuid.uuid4.call_count == 1, 'should create a new SID with uuid'
@@ -45,7 +45,7 @@ async def test_should_return_data_from_session_store(mocker, mock_dict):
     data = {'foo': 'bar'}
 
     session_interface = InMemorySessionInterface(
-        cookie_name=COOKIE_NAME)
+        cookie_name=COOKIE_NAME, warn_lock=False)
     session_interface.session_store.get = mocker.MagicMock(
         return_value=ujson.dumps(data))
 
@@ -71,7 +71,7 @@ async def test_should_use_prefix_in_store_key(mocker, mock_dict):
 
     session_interface = InMemorySessionInterface(
         cookie_name=COOKIE_NAME,
-        prefix=prefix)
+        prefix=prefix, warn_lock=False)
     session_interface.session_store.get = mocker.MagicMock(
         return_value=ujson.dumps(data))
     await session_interface.open(request)
@@ -88,13 +88,13 @@ async def test_should_use_return_empty_session_via_store(mocker, mock_dict):
 
     session_interface = InMemorySessionInterface(
         cookie_name=COOKIE_NAME,
-        prefix=prefix)
+        prefix=prefix, warn_lock=False)
     session_interface.session_store.get = mocker.MagicMock(
         return_value=None)
 
     session_interface = InMemorySessionInterface(
         cookie_name=COOKIE_NAME,
-        prefix=prefix)
+        prefix=prefix, warn_lock=False)
     session = await session_interface.open(request)
 
     assert session == {}
@@ -106,7 +106,7 @@ async def test_should_attach_session_to_request(mocker, mock_dict):
     request.cookies = COOKIES
 
     session_interface = InMemorySessionInterface(
-        cookie_name=COOKIE_NAME)
+        cookie_name=COOKIE_NAME, warn_lock=False)
     session_interface.session_store.get = mocker.MagicMock(
         return_value=None)
     session = await session_interface.open(request)
@@ -120,7 +120,7 @@ async def test_should_delete_session_from_store(mocker, mock_dict):
     request.cookies = COOKIES
 
     session_interface = InMemorySessionInterface(
-        cookie_name=COOKIE_NAME)
+        cookie_name=COOKIE_NAME, warn_lock=False)
     session_interface.session_store['session:{}'.format(SID)] = '{foo:1}'
     session_interface.session_store.get = mocker.MagicMock(return_value=None)
     session_interface.session_store.delete = mocker.MagicMock()
@@ -143,7 +143,7 @@ async def test_should_expire_cookies_if_modified(mock_dict, mocker):
     request.cookies = COOKIES
 
     session_interface = InMemorySessionInterface(
-        cookie_name=COOKIE_NAME)
+        cookie_name=COOKIE_NAME, warn_lock=False)
     session_interface.session_store.get = mocker.MagicMock(
         return_value=ujson.dumps({'foo': 'bar'}))
     session_interface.session_store.delete = mocker.MagicMock()
@@ -163,7 +163,7 @@ async def test_should_save_in_memory_for_time_specified(mock_dict, mocker):
     request.cookies = COOKIES
 
     session_interface = InMemorySessionInterface(
-        cookie_name=COOKIE_NAME)
+        cookie_name=COOKIE_NAME, warn_lock=False)
     session_interface.session_store.get = mocker.MagicMock(
         return_value=ujson.dumps({'foo': 'bar'}))
     session_interface.session_store.set = mocker.MagicMock()
@@ -187,7 +187,7 @@ async def test_should_reset_cookie_expiry(mocker, mock_dict):
     time.time.return_value = 1488576462.138493
 
     session_interface = InMemorySessionInterface(
-        cookie_name=COOKIE_NAME)
+        cookie_name=COOKIE_NAME, warn_lock=False)
     session_interface.session_store.get = mocker.MagicMock(
         return_value=ujson.dumps({'foo': 'bar'}))
     session_interface.session_store.set = mocker.MagicMock()
@@ -210,7 +210,7 @@ async def test_sessioncookie_should_omit_request_headers(mocker, mock_dict):
     request.cookies = COOKIES
 
     session_interface = InMemorySessionInterface(
-        cookie_name=COOKIE_NAME, sessioncookie=True)
+        cookie_name=COOKIE_NAME, sessioncookie=True, warn_lock=False)
     session_interface.session_store.get = mocker.MagicMock(
         return_value=ujson.dumps({'foo': 'bar'}))
     session_interface.session_store.set = mocker.MagicMock()
@@ -230,7 +230,7 @@ async def test_sessioncookie_delete_has_expiration_headers(mocker, mock_dict):
     request.cookies = COOKIES
 
     session_interface = InMemorySessionInterface(
-        cookie_name=COOKIE_NAME, sessioncookie=True)
+        cookie_name=COOKIE_NAME, sessioncookie=True, warn_lock=False)
     session_interface.session_store.get = mocker.MagicMock(
         return_value=ujson.dumps({'foo': 'bar'}))
     session_interface.session_store.set = mocker.MagicMock()
@@ -252,7 +252,7 @@ async def test_samesite_dict_set_lax(mocker, mock_dict):
     request.cookies = COOKIES
 
     session_interface = InMemorySessionInterface(
-        cookie_name=COOKIE_NAME, samesite=SAMESITE
+        cookie_name=COOKIE_NAME, samesite=SAMESITE, warn_lock=False
     )
     session_interface.session_store.get = mocker.MagicMock(
         return_value=ujson.dumps(dict(foo='bar'))
@@ -274,7 +274,7 @@ async def test_samesite_dict_set_None(mocker, mock_dict):
     request.cookies = COOKIES
 
     session_interface = InMemorySessionInterface(
-        cookie_name=COOKIE_NAME, samesite=SAMESITE
+        cookie_name=COOKIE_NAME, samesite=SAMESITE, warn_lock=False
     )
     session_interface.session_store.get = mocker.MagicMock(
         return_value=ujson.dumps(dict(foo='bar'))
@@ -306,12 +306,14 @@ async def test_two_sessions(mocker, mock_dict, event_loop):
         cookie_name=COOKIE_NAME_1,
         prefix=PREFIX_1,
         session_name=SESSION_NAME_1,
+        warn_lock=False
     )
 
     session_interface_2 = InMemorySessionInterface(
         cookie_name=COOKIE_NAME_2,
         prefix=PREFIX_2,
         session_name=SESSION_NAME_2,
+        warn_lock=False
     )
 
     await session_interface_1.open(request)
@@ -324,3 +326,32 @@ async def test_two_sessions(mocker, mock_dict, event_loop):
 
     assert request[SESSION_NAME_1] is not request[SESSION_NAME_2]
     assert request[SESSION_NAME_1].sid != request[SESSION_NAME_2].sid
+
+def test_sets_expiry_internally():
+    e = ExpiringDict()
+    e.set('foo', 'bar', 300)
+    assert e.expiry_times['foo'] is not None
+
+
+def test_returns_value_if_before_expiry():
+    e = ExpiringDict()
+    e.set('foo', 'bar', 300)
+    assert e.get('foo') is not None
+
+
+def test_expires_value_if_after_expiry():
+    e = ExpiringDict()
+    e.set('foo', 'bar', 300)
+    e.expiry_times['foo'] = 0
+
+    assert e.get('foo') is None
+    assert e.expiry_times.get('foo') is None
+
+
+def test_deletes_values():
+    e = ExpiringDict()
+    e.set('foo', 'bar', 300)
+    e.delete('foo')
+
+    assert e.get('foo') is None
+    assert e.expiry_times.get('foo') is None

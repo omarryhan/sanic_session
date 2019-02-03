@@ -46,7 +46,7 @@ async def get_interface_and_request(mocker, redis_getter, data=None):
 
     session_interface = RedisSessionInterface(
         redis_getter,
-        cookie_name=COOKIE_NAME)
+        cookie_name=COOKIE_NAME, warn_lock=False)
     await session_interface.open(request)
 
     return session_interface, request
@@ -62,7 +62,7 @@ async def test_redis_should_create_new_sid_if_no_cookie(
     redis_getter = mock_coroutine(redis_connection)
 
     mocker.spy(uuid, 'uuid4')
-    session_interface = RedisSessionInterface(redis_getter)
+    session_interface = RedisSessionInterface(redis_getter, warn_lock=False)
     await session_interface.open(request)
 
     assert uuid.uuid4.call_count == 1, 'should create a new SID with uuid'
@@ -84,7 +84,7 @@ async def test_should_return_data_from_redis(mocker, mock_dict, mock_redis):
 
     session_interface = RedisSessionInterface(
         redis_getter,
-        cookie_name=COOKIE_NAME)
+        cookie_name=COOKIE_NAME, warn_lock=False)
     session = await session_interface.open(request)
 
     assert uuid.uuid4.call_count == 0, 'should not create a new SID'
@@ -109,7 +109,7 @@ async def test_should_use_prefix_in_redis_key(mocker, mock_dict, mock_redis):
     session_interface = RedisSessionInterface(
         redis_getter,
         cookie_name=COOKIE_NAME,
-        prefix=prefix)
+        prefix=prefix, warn_lock=False)
     await session_interface.open(request)
 
     assert redis_connection.get.call_args_list[0][0][0] == \
@@ -130,7 +130,7 @@ async def test_should_use_return_empty_session_via_redis(
     session_interface = RedisSessionInterface(
         redis_getter,
         cookie_name=COOKIE_NAME,
-        prefix=prefix)
+        prefix=prefix, warn_lock=False)
     session = await session_interface.open(request)
 
     assert session == {}
@@ -148,7 +148,7 @@ async def test_should_attach_session_to_request(mock_redis, mock_dict):
     session_interface = RedisSessionInterface(
         redis_getter,
         redis_connection,
-        cookie_name=COOKIE_NAME)
+        cookie_name=COOKIE_NAME, warn_lock=False)
     session = await session_interface.open(request)
 
     assert session == request['session']
@@ -168,7 +168,7 @@ async def test_should_delete_session_from_redis(mocker, mock_redis, mock_dict):
 
     session_interface = RedisSessionInterface(
         redis_getter,
-        cookie_name=COOKIE_NAME)
+        cookie_name=COOKIE_NAME, warn_lock=False)
 
     await session_interface.open(request)
     await session_interface.save(request, response)
@@ -193,7 +193,7 @@ async def test_should_expire_redis_cookies_if_modified(mock_dict, mock_redis):
 
     session_interface = RedisSessionInterface(
         redis_getter,
-        cookie_name=COOKIE_NAME)
+        cookie_name=COOKIE_NAME, warn_lock=False)
 
     await session_interface.open(request)
 
@@ -215,7 +215,7 @@ async def test_should_save_in_redis_for_time_specified(mock_dict, mock_redis):
 
     session_interface = RedisSessionInterface(
         redis_getter,
-        cookie_name=COOKIE_NAME)
+        cookie_name=COOKIE_NAME, warn_lock=False)
 
     await session_interface.open(request)
 
@@ -241,7 +241,7 @@ async def test_should_reset_cookie_expiry(mocker, mock_dict, mock_redis):
 
     session_interface = RedisSessionInterface(
         redis_getter,
-        cookie_name=COOKIE_NAME)
+        cookie_name=COOKIE_NAME, warn_lock=False)
 
     await session_interface.open(request)
     request['session']['foo'] = 'baz'
@@ -266,7 +266,7 @@ async def test_sessioncookie_should_omit_request_headers(mocker, mock_dict):
     session_interface = RedisSessionInterface(
         redis_getter,
         cookie_name=COOKIE_NAME,
-        sessioncookie=True)
+        sessioncookie=True, warn_lock=False)
 
     await session_interface.open(request)
     await session_interface.save(request, response)
@@ -290,7 +290,7 @@ async def test_sessioncookie_delete_has_expiration_headers(mocker, mock_dict):
     session_interface = RedisSessionInterface(
         redis_getter,
         cookie_name=COOKIE_NAME,
-        sessioncookie=True)
+        sessioncookie=True, warn_lock=False)
 
     await session_interface.open(request)
     await session_interface.save(request, response)

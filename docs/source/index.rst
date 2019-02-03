@@ -23,6 +23,7 @@ sanic_session provides a number of *session interfaces* for you to store a clien
 
 * Redis
 * Memcache
+* Mongodb
 * In-Memory (suitable for testing and development environments)
 
 See :ref:`using_the_interfaces` for instructions on using each.
@@ -41,12 +42,13 @@ A simple example uses the in-memory session interface.
     @app.route("/")
     async def index(request):
         # interact with the session like a normal dict
-        if not request['session'].get('foo'):
-            request['session']['foo'] = 0
+        async with request['session']:  # Locks the session_id by sid  
+            if not request['session'].get('foo'):
+                request['session']['foo'] = 0
 
-        request['session']['foo'] += 1
+            request['session']['foo'] += 1
 
-        return text(request['session']['foo'])
+            return text(request['session']['foo'])
 
     if __name__ == "__main__":
         app.run(host="0.0.0.0", port=8000, debug=True)

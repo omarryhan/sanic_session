@@ -31,7 +31,9 @@ class MongoDBSessionInterface(BaseSessionInterface):
             cookie_name: str='session',
             sessioncookie: bool=False,
             samesite: str=None,
-            session_name: str='session'):
+            session_name: str='session',
+            secure: bool=None,
+            warn_lock: bool=True):
 
         """Initializes the interface for storing client sessions in MongoDB.
 
@@ -62,6 +64,11 @@ class MongoDBSessionInterface(BaseSessionInterface):
                 e.g. If ``session_name`` is ``alt_session``, it should be accessed like that: ``request['alt_session']``
                 e.g. And if ``session_name`` is left to default, it should be accessed like that: ``request['session']``
                 Default: 'session'
+            secure (bool, optional):
+                Whether or not the cookie should be secure (HTTP(S) only)
+            warn_lock (bool, optional):
+                Set to False to turn off session_dict lock warning (Not recommended)
+                Default: True
         """
         if _SessionModel is None:
             msg = "Please install Mongo dependencies: pip install sanic_session[mongo]"
@@ -89,6 +96,8 @@ class MongoDBSessionInterface(BaseSessionInterface):
             sessioncookie=sessioncookie,
             samesite=samesite,
             session_name=session_name,
+            secure=secure,
+            warn_lock=warn_lock
         )
 
         # set collection name
@@ -108,14 +117,17 @@ class MongoDBSessionInterface(BaseSessionInterface):
             await _SessionModel.create_index('sid')
             await _SessionModel.create_index('expiry', expireAfterSeconds=0)
 
-    async def _get_value(self, prefix, key):
+    async def _get_value(self, sid):
+        key = self.prefix + sid
         value = await _SessionModel.find_one({'sid': key}, as_raw=True)
         return value['data'] if value else None
 
-    async def _delete_key(self, key):
+    async def _del_value(self, sid):
+        key = self.prefix + sid
         await _SessionModel.delete_one({'sid': key})
 
-    async def _set_value(self, key, data):
+    async def _set_value(self, sid, data):
+        key = self.prefix + sid
         expiry = datetime.utcnow() + timedelta(seconds=self.expiry)
         await _SessionModel.replace_one(
             {'sid': key},
